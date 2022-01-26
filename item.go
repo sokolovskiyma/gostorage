@@ -1,4 +1,4 @@
-package storage
+package gostorage
 
 type Item struct {
 	Value      interface{}
