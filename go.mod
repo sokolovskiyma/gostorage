@@ -1,3 +1,3 @@
 module github.com/sokolovskiyma/gostorage
 
-go 1.16
+go 1.17
