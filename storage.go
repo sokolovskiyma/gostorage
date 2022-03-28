@@ -8,17 +8,22 @@ import (
 	"time"
 )
 
-type Storage struct {
+type Storage[T any] struct {
 	sync.RWMutex
-	items              map[string]Item
-	cleaner            *cleaner
+	items              map[string]Item[T]
+	cleaner            *cleaner[T]
 	cleanupIntrval     time.Duration
 	defalultExpiration time.Duration
 }
 
-func NewStorage() *Storage {
-	return &Storage{
-		items:              make(map[string]Item),
+type Item[T any] struct {
+	Value      T
+	Expiration int64
+}
+
+func NewStorage[T any]() *Storage[T] {
+	return &Storage[T]{
+		items:              make(map[string]Item[T]),
 		cleanupIntrval:     0,
 		defalultExpiration: 0,
 	}
@@ -26,25 +31,25 @@ func NewStorage() *Storage {
 
 // Setup
 
-func (s *Storage) DefaultExpiration(defalultExpiration time.Duration) *Storage {
+func (s *Storage[T]) DefaultExpiration(defalultExpiration time.Duration) *Storage[T] {
 	s.Lock()
 	defer s.Unlock()
 	s.defalultExpiration = defalultExpiration
 	return s
 }
 
-func (s *Storage) WithCleaner(cleanupIntrval time.Duration) *Storage {
+func (s *Storage[T]) WithCleaner(cleanupIntrval time.Duration) *Storage[T] {
 	s.Lock()
 	defer s.Unlock()
 
 	if cleanupIntrval > 0 {
-		s.cleaner = &cleaner{
+		s.cleaner = &cleaner[T]{
 			Interval: cleanupIntrval,
 			stop:     make(chan bool),
 		}
 		go s.cleaner.Run(s)
 
-		runtime.SetFinalizer(s, stopCleaner)
+		runtime.SetFinalizer(s, stopCleaner[T])
 	}
 
 	return s
@@ -52,7 +57,7 @@ func (s *Storage) WithCleaner(cleanupIntrval time.Duration) *Storage {
 
 // Actions
 
-func (s *Storage) SaveFile(filename string) (err error) {
+func (s *Storage[T]) SaveFile(filename string) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -70,7 +75,7 @@ func (s *Storage) SaveFile(filename string) (err error) {
 	return
 }
 
-func (s *Storage) LoadFile(filename string) (err error) {
+func (s *Storage[T]) LoadFile(filename string) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -88,7 +93,7 @@ func (s *Storage) LoadFile(filename string) (err error) {
 	return
 }
 
-func (s *Storage) DeleteExpired() {
+func (s *Storage[T]) DeleteExpired() {
 	s.Lock()
 	defer s.Unlock()
 	var toDelete []string
