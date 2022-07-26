@@ -3,8 +3,8 @@ package gostorage
 import "time"
 
 func (s *Storage[T]) Set(key string, value T) {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	if s.defalultExpiration == 0 {
 		s.items[key] = Item[T]{
@@ -20,9 +20,19 @@ func (s *Storage[T]) Set(key string, value T) {
 
 }
 
-func (s *Storage[T]) SetWithExpiration(key string, value T, expiration time.Duration) {
-	s.Lock()
-	defer s.Unlock()
+func (s *Storage[T]) SetForever(key string, value T) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.items[key] = Item[T]{
+		Value:      value,
+		Expiration: 0,
+	}
+}
+
+func (s *Storage[T]) SetTemporarily(key string, value T, expiration time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	s.items[key] = Item[T]{
 		Value:      value,
@@ -33,8 +43,8 @@ func (s *Storage[T]) SetWithExpiration(key string, value T, expiration time.Dura
 func (s *Storage[T]) Get(key string) (T, bool) {
 	var defalultValue T
 
-	s.Lock()
-	defer s.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	item, found := s.items[key]
 	if !found {
@@ -50,10 +60,27 @@ func (s *Storage[T]) Get(key string) (T, bool) {
 }
 
 func (s *Storage[T]) Delete(key string) {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	delete(s.items, key)
+}
+
+func (s *Storage[T]) DeleteExpired() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var toDelete []string
+	now := time.Now().UnixNano()
+
+	for key, value := range s.items {
+		if value.Expiration > 0 && now > value.Expiration {
+			toDelete = append(toDelete, key)
+		}
+	}
+
+	for _, key := range toDelete {
+		delete(s.items, key)
+	}
 }
 
 // func (s *Storage) Update(key string, value interface{}) error {

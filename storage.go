@@ -9,7 +9,7 @@ import (
 )
 
 type Storage[T any] struct {
-	sync.RWMutex
+	mu                 sync.RWMutex
 	items              map[string]Item[T]
 	cleaner            *cleaner[T]
 	cleanupIntrval     time.Duration
@@ -32,15 +32,15 @@ func NewStorage[T any]() *Storage[T] {
 // Setup
 
 func (s *Storage[T]) DefaultExpiration(defalultExpiration time.Duration) *Storage[T] {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.defalultExpiration = defalultExpiration
 	return s
 }
 
 func (s *Storage[T]) WithCleaner(cleanupIntrval time.Duration) *Storage[T] {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	if cleanupIntrval > 0 {
 		s.cleaner = &cleaner[T]{
@@ -58,8 +58,8 @@ func (s *Storage[T]) WithCleaner(cleanupIntrval time.Duration) *Storage[T] {
 // Actions
 
 func (s *Storage[T]) SaveFile(filename string) (err error) {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
@@ -76,8 +76,8 @@ func (s *Storage[T]) SaveFile(filename string) (err error) {
 }
 
 func (s *Storage[T]) LoadFile(filename string) (err error) {
-	s.Lock()
-	defer s.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	file, err := os.Open(filename)
 	if err != nil {
@@ -92,46 +92,3 @@ func (s *Storage[T]) LoadFile(filename string) (err error) {
 
 	return
 }
-
-func (s *Storage[T]) DeleteExpired() {
-	s.Lock()
-	defer s.Unlock()
-	var toDelete []string
-	now := time.Now().UnixNano()
-
-	for key, value := range s.items {
-		if value.Expiration > 0 && now > value.Expiration {
-			toDelete = append(toDelete, key)
-		}
-	}
-
-	for _, key := range toDelete {
-		delete(s.items, key)
-	}
-}
-
-// func (s *Storage) FromMap(data map[string]interface{}) *Storage {
-// 	s.Lock()
-// 	defer s.Unlock()
-// 	return s
-// }
-// func (s *Storage) FromFile(filename string) *Storage {
-// 	s.Lock()
-// 	defer s.Unlock()
-// 	return s
-// }
-
-// func newCacheWithJanitor(de time.Duration, ci time.Duration, m map[string]Item) *Cache {
-// 	c := newCache(de, m)
-// 	// This trick ensures that the janitor goroutine (which--granted it
-// 	// was enabled--is running DeleteExpired on c forever) does not keep
-// 	// the returned C object from being garbage collected. When it is
-// 	// garbage collected, the finalizer stops the janitor goroutine, after
-// 	// which c can be collected.
-// 	C := &Cache{c}
-// 	if ci > 0 {
-// 	  runJanitor(c, ci)
-// 	  runtime.SetFinalizer(C, stopJanitor)
-// 	}
-// 	return C
-//   }

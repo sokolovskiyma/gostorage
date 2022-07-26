@@ -5,16 +5,17 @@ import (
 	"time"
 )
 
-const (
-	testKey        = "testKey"
-	testValue      = "testValue"
-	testExpiration = 5 * time.Second
-)
+// TODO
+// const (
+// 	testKeyShards        = "testKeyShards"
+// 	testValueShards      = "testValueShards"
+// 	testExpirationShards = 5 * time.Second
+// )
 
 /* TESTS */
 
-func TestNewStorage(t *testing.T) {
-	stor := NewStorage[any]()
+func TestNewStorageShards(t *testing.T) {
+	stor := NewStorageShards[any](5)
 
 	if stor == nil {
 		t.Log("stor == nil")
@@ -22,19 +23,19 @@ func TestNewStorage(t *testing.T) {
 	}
 }
 
-func TestSet(t *testing.T) {
+func TestSetShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorageShards[string](5)
 
 	// test
 	stor.Set(testKey, testValue)
 }
 
-func TestGet(t *testing.T) {
+func TestGetShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorageShards[string](5)
 
 	// test
 	stor.Set(testKey, testValue)
@@ -53,10 +54,10 @@ func TestGet(t *testing.T) {
 	}
 }
 
-func TestDelete(t *testing.T) {
+func TestDeleteShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorageShards[string](5)
 
 	// test
 	stor.Set(testKey, testValue)
@@ -68,9 +69,9 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-func TestGetWithExpiration(t *testing.T) {
+func TestGetWithExpirationShards(t *testing.T) {
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorageShards[string](5)
 
 	// test
 	stor.SetTemporarily(testKey, testValue, testExpiration)
@@ -91,9 +92,9 @@ func TestGetWithExpiration(t *testing.T) {
 	}
 }
 
-func TestDefaultExpiration(t *testing.T) {
+func TestDefaultExpirationShards(t *testing.T) {
 	// preparation
-	stor := NewStorage[string]().DefaultExpiration(testExpiration)
+	stor := NewStorageShards[string](5).DefaultExpiration(testExpiration)
 
 	// test
 	stor.Set(testKey, testValue)
@@ -114,10 +115,10 @@ func TestDefaultExpiration(t *testing.T) {
 	}
 }
 
-func TestCleaner(t *testing.T) {
+func TestCleanerShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string]().WithCleaner(time.Second)
+	stor := NewStorageShards[string](5).WithCleaner(time.Second)
 
 	// test
 	stor.Set(testKey, testValue)
@@ -140,16 +141,16 @@ func TestCleaner(t *testing.T) {
 		t.Fail()
 	}
 
-	if _, ok := stor.items[testKey]; ok {
+	if _, ok := stor.shardByKey(testValue).items[testKey]; ok {
 		t.Log("found deleted value")
 		t.Fail()
 	}
 }
 
-func TestSaveLoadFile(t *testing.T) {
+func TestSaveLoadFileShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorageShards[string](5)
 
 	// test
 	stor.SetTemporarily(testKey, testValue, testExpiration)
@@ -161,7 +162,7 @@ func TestSaveLoadFile(t *testing.T) {
 	}
 
 	// test
-	stor2 := NewStorage[string]()
+	stor2 := NewStorageShards[string](5)
 	err = stor2.LoadFile("testfile")
 	if err != nil {
 		t.Log("cant load file", err.Error())
@@ -180,9 +181,9 @@ func TestSaveLoadFile(t *testing.T) {
 
 /* BENCHMARKS */
 
-func BenchmarkSetForever(b *testing.B) {
+func BenchmarkSetForeverShards(b *testing.B) {
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorageShards[string](5)
 
 	// test
 	for i := 0; i < b.N; i++ {
@@ -190,9 +191,9 @@ func BenchmarkSetForever(b *testing.B) {
 	}
 }
 
-func BenchmarkSet(b *testing.B) {
+func BenchmarkSetShards(b *testing.B) {
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorageShards[string](5)
 
 	// test
 	for i := 0; i < b.N; i++ {
@@ -200,9 +201,9 @@ func BenchmarkSet(b *testing.B) {
 	}
 }
 
-func BenchmarkSetDefault(b *testing.B) {
+func BenchmarkSetDefaultShards(b *testing.B) {
 	// preparation
-	stor := NewStorage[string]().DefaultExpiration(testExpiration)
+	stor := NewStorageShards[string](5).DefaultExpiration(testExpiration)
 
 	// test
 	for i := 0; i < b.N; i++ {
