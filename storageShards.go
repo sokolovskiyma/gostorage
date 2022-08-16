@@ -2,38 +2,29 @@ package gostorage
 
 import (
 	"encoding/gob"
+	"hash/fnv"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/sokolovskiyma/gostorage/item"
 )
 
-type StorageShards[T any] struct {
+type storageShards[V any] struct {
 	mu     sync.RWMutex
-	shards []*Storage[T]
-}
-
-func NewStorageShards[T any](numShards int) *StorageShards[T] {
-	if numShards < 1 {
-		panic("numShards must be >= 1")
-	}
-	var ss StorageShards[T]
-	for i := 0; i < numShards; i++ {
-		// stor := NewStorage[T]()
-		ss.shards = append(ss.shards, NewStorage[T]())
-	}
-	return &ss
+	shards []*storage[V]
 }
 
 // Setup
 
-func (ss *StorageShards[T]) DefaultExpiration(defalultExpiration time.Duration) *StorageShards[T] {
+func (ss *storageShards[V]) WithExpiration(defalultExpiration time.Duration) Storage[V] {
 	for index := range ss.shards {
-		ss.shards[index].DefaultExpiration(defalultExpiration)
+		ss.shards[index].WithExpiration(defalultExpiration)
 	}
 	return ss
 }
 
-func (ss *StorageShards[T]) WithCleaner(cleanupIntrval time.Duration) *StorageShards[T] {
+func (ss *storageShards[V]) WithCleaner(cleanupIntrval time.Duration) Storage[V] {
 	for index := range ss.shards {
 		ss.shards[index].WithCleaner(cleanupIntrval)
 	}
@@ -42,7 +33,7 @@ func (ss *StorageShards[T]) WithCleaner(cleanupIntrval time.Duration) *StorageSh
 
 // Actions
 
-func (ss *StorageShards[T]) SaveFile(filename string) (err error) {
+func (ss *storageShards[V]) SaveFile(filename string) (err error) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 
@@ -52,11 +43,7 @@ func (ss *StorageShards[T]) SaveFile(filename string) (err error) {
 	}
 	defer file.Close()
 
-	// ERROR: Нельзя просто так сохранить shards
-	// тк там есть пол которые не экспортируются
-	// нужно создать новый make([]map[K]V, len(ss.shards))
-	// сохранить туда осколки в цикле
-	temp := make([]map[string]Item[T], 0, len(ss.shards))
+	temp := make([]map[string]*item.Item[V], 0, len(ss.shards))
 	for index := range ss.shards {
 		temp = append(temp, ss.shards[index].items)
 	}
@@ -68,7 +55,7 @@ func (ss *StorageShards[T]) SaveFile(filename string) (err error) {
 	return
 }
 
-func (ss *StorageShards[T]) LoadFile(filename string) (err error) {
+func (ss *storageShards[V]) LoadFile(filename string) (err error) {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
 
@@ -78,7 +65,7 @@ func (ss *StorageShards[T]) LoadFile(filename string) (err error) {
 	}
 	defer file.Close()
 
-	temp := make([]map[string]Item[T], 0, len(ss.shards))
+	temp := make([]map[string]*item.Item[V], 0, len(ss.shards))
 	err = gob.NewDecoder(file).Decode(&temp)
 	if err != nil {
 		return
@@ -89,4 +76,46 @@ func (ss *StorageShards[T]) LoadFile(filename string) (err error) {
 	}
 
 	return
+}
+
+func (ss *storageShards[V]) DeleteExpired() {
+	for index := range ss.shards {
+		ss.shards[index].DeleteExpired()
+	}
+}
+
+// FUNCTIONS
+
+func (ss *storageShards[V]) shardByKey(key string) *storage[V] {
+	hash := fnv.New32()
+	hash.Write([]byte(key))
+	return ss.shards[int(hash.Sum32())%len(ss.shards)]
+}
+
+func (ss *storageShards[V]) Set(key string, value V) {
+	ss.shardByKey(key).Set(key, value)
+}
+
+func (ss *storageShards[V]) Get(key string) (V, bool) {
+	return ss.shardByKey(key).Get(key)
+}
+
+func (ss *storageShards[V]) GetFetch(key string, f func(string) (V, error)) (V, bool) {
+	return ss.shardByKey(key).GetFetch(key, f)
+}
+
+func (ss *storageShards[V]) Delete(key string) {
+	ss.shardByKey(key).Delete(key)
+}
+
+func (ss *storageShards[V]) Keys() []string {
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
+
+	var keys = make([]string, 0, 512)
+	for shardIndex := range ss.shards {
+		keys = append(keys, ss.shards[shardIndex].Keys()...)
+	}
+
+	return keys
 }

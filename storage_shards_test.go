@@ -54,6 +54,27 @@ func TestGetShards(t *testing.T) {
 	}
 }
 
+func TestWithFetchShards(t *testing.T) {
+
+	// preparation
+	stor := NewStorageShards[string](5)
+
+	// test
+	value, ok := stor.GetFetch(testKey, func(s string) (string, error) {
+		return testValue, nil
+	})
+
+	if !ok {
+		t.Log("there is no value 'test'")
+		t.Fail()
+	}
+
+	if value != testValue {
+		t.Logf("value %+v != %+v\n", value, testValue)
+		t.Fail()
+	}
+}
+
 func TestDeleteShards(t *testing.T) {
 
 	// preparation
@@ -69,12 +90,34 @@ func TestDeleteShards(t *testing.T) {
 	}
 }
 
+func TestKeysShards(t *testing.T) {
+
+	// preparation
+	stor := NewStorageShards[string](5)
+	stor.Set("one", testValue)
+	stor.Set("two", testValue)
+	stor.Set("three", testValue)
+
+	// test
+	if len(stor.Keys()) != 3 {
+		t.Log("missing some keys")
+		t.Fail()
+	}
+
+	for _, key := range stor.Keys() {
+		if _, ok := stor.Get(key); !ok {
+			t.Logf("there is no key %v", key)
+			t.Fail()
+		}
+	}
+}
+
 func TestGetWithExpirationShards(t *testing.T) {
 	// preparation
 	stor := NewStorageShards[string](5)
 
 	// test
-	stor.SetTemporarily(testKey, testValue, testExpiration)
+	stor.Set(testKey, testValue)
 
 	if value, ok := stor.Get(testKey); !ok {
 		t.Log("there is no value 'test'")
@@ -84,6 +127,8 @@ func TestGetWithExpirationShards(t *testing.T) {
 		t.Fail()
 	}
 
+	stor.WithExpiration(testExpiration)
+	stor.Set(testKey, testValue)
 	time.Sleep(testExpiration)
 
 	if value, ok := stor.Get(testKey); ok || value != "" {
@@ -92,9 +137,9 @@ func TestGetWithExpirationShards(t *testing.T) {
 	}
 }
 
-func TestDefaultExpirationShards(t *testing.T) {
+func TestWithExpirationShards(t *testing.T) {
 	// preparation
-	stor := NewStorageShards[string](5).DefaultExpiration(testExpiration)
+	stor := NewStorageShards[string](5).WithExpiration(testExpiration)
 
 	// test
 	stor.Set(testKey, testValue)
@@ -115,7 +160,7 @@ func TestDefaultExpirationShards(t *testing.T) {
 	}
 }
 
-func TestCleanerShards(t *testing.T) {
+func TestWithCleanerShards(t *testing.T) {
 
 	// preparation
 	stor := NewStorageShards[string](5).WithCleaner(time.Second)
@@ -133,7 +178,8 @@ func TestCleanerShards(t *testing.T) {
 	}
 
 	// test
-	stor.SetTemporarily(testKey, testValue, time.Second)
+	stor.WithExpiration(testExpiration)
+	stor.Set(testKey, testValue)
 	time.Sleep(testExpiration)
 
 	if value, ok := stor.Get(testKey); ok || value != "" {
@@ -141,7 +187,7 @@ func TestCleanerShards(t *testing.T) {
 		t.Fail()
 	}
 
-	if _, ok := stor.shardByKey(testValue).items[testKey]; ok {
+	if _, ok := stor.(*storageShards[string]).shardByKey(testValue).items[testKey]; ok {
 		t.Log("found deleted value")
 		t.Fail()
 	}
@@ -150,10 +196,10 @@ func TestCleanerShards(t *testing.T) {
 func TestSaveLoadFileShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorageShards[string](5)
+	stor := NewStorageShards[string](5).WithExpiration(testExpiration)
 
 	// test
-	stor.SetTemporarily(testKey, testValue, testExpiration)
+	stor.Set(testKey, testValue)
 
 	err := stor.SaveFile("testfile")
 	if err != nil {
@@ -181,32 +227,36 @@ func TestSaveLoadFileShards(t *testing.T) {
 
 /* BENCHMARKS */
 
-func BenchmarkSetForeverShards(b *testing.B) {
-	// preparation
-	stor := NewStorageShards[string](5)
-
-	// test
-	for i := 0; i < b.N; i++ {
-		stor.SetForever(testKey, testValue)
-	}
-}
-
-func BenchmarkSetShards(b *testing.B) {
+func BenchmarkSetGetShards(b *testing.B) {
 	// preparation
 	stor := NewStorageShards[string](5)
 
 	// test
 	for i := 0; i < b.N; i++ {
 		stor.Set(testKey, testValue)
+		stor.Get(testKey)
 	}
 }
 
-func BenchmarkSetDefaultShards(b *testing.B) {
+func BenchmarkSetGetWithExpirationShards(b *testing.B) {
 	// preparation
-	stor := NewStorageShards[string](5).DefaultExpiration(testExpiration)
+	stor := NewStorageShards[string](5).WithExpiration(testExpiration)
 
 	// test
 	for i := 0; i < b.N; i++ {
 		stor.Set(testKey, testValue)
+		stor.Get(testKey)
+	}
+}
+
+func BenchmarkSetGetSetWithFetchShards(b *testing.B) {
+	// preparation
+	stor := NewStorageShards[string](5)
+
+	// test
+	for i := 0; i < b.N; i++ {
+		stor.GetFetch(testKey, func(string) (string, error) {
+			return testValue, nil
+		})
 	}
 }

@@ -53,6 +53,26 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestWithFetch(t *testing.T) {
+	// preparation
+	stor := NewStorage[string]()
+
+	// test
+	value, ok := stor.GetFetch(testKey, func(s string) (string, error) {
+		return testValue, nil
+	})
+
+	if !ok {
+		t.Log("there is no value 'test'")
+		t.Fail()
+	}
+
+	if value != testValue {
+		t.Logf("value %+v != %+v\n", value, testValue)
+		t.Fail()
+	}
+}
+
 func TestDelete(t *testing.T) {
 
 	// preparation
@@ -68,32 +88,31 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-func TestGetWithExpiration(t *testing.T) {
+func TestKeys(t *testing.T) {
+
 	// preparation
 	stor := NewStorage[string]()
+	stor.Set("one", testValue)
+	stor.Set("two", testValue)
+	stor.Set("three", testValue)
 
 	// test
-	stor.SetTemporarily(testKey, testValue, testExpiration)
-
-	if value, ok := stor.Get(testKey); !ok {
-		t.Log("there is no value 'test'")
-		t.Fail()
-	} else if value != testValue {
-		t.Logf("value %+v != %+v\n", value, testValue)
+	if len(stor.Keys()) != 3 {
+		t.Log("missing some keys")
 		t.Fail()
 	}
 
-	time.Sleep(testExpiration)
-
-	if value, ok := stor.Get(testKey); ok || value != "" {
-		t.Log("found expired value")
-		t.Fail()
+	for _, key := range stor.Keys() {
+		if _, ok := stor.Get(key); !ok {
+			t.Logf("there is no key %v", key)
+			t.Fail()
+		}
 	}
 }
 
-func TestDefaultExpiration(t *testing.T) {
+func TestGetWithExpiration(t *testing.T) {
 	// preparation
-	stor := NewStorage[string]().DefaultExpiration(testExpiration)
+	stor := NewStorage[string]().WithExpiration(testExpiration)
 
 	// test
 	stor.Set(testKey, testValue)
@@ -114,7 +133,30 @@ func TestDefaultExpiration(t *testing.T) {
 	}
 }
 
-func TestCleaner(t *testing.T) {
+func TestWithExpiration(t *testing.T) {
+	// preparation
+	stor := NewStorage[string]().WithExpiration(testExpiration)
+
+	// test
+	stor.Set(testKey, testValue)
+
+	if value, ok := stor.Get(testKey); !ok {
+		t.Log("there is no value 'test'")
+		t.Fail()
+	} else if value != testValue {
+		t.Logf("value %+v != %+v\n", value, testValue)
+		t.Fail()
+	}
+
+	time.Sleep(testExpiration)
+
+	if value, ok := stor.Get(testKey); ok || value != "" {
+		t.Log("found expired value")
+		t.Fail()
+	}
+}
+
+func TestWithCleaner(t *testing.T) {
 
 	// preparation
 	stor := NewStorage[string]().WithCleaner(time.Second)
@@ -132,7 +174,8 @@ func TestCleaner(t *testing.T) {
 	}
 
 	// test
-	stor.SetTemporarily(testKey, testValue, time.Second)
+	stor.WithExpiration(time.Second)
+	stor.Set(testKey, testValue)
 	time.Sleep(testExpiration)
 
 	if value, ok := stor.Get(testKey); ok || value != "" {
@@ -140,7 +183,7 @@ func TestCleaner(t *testing.T) {
 		t.Fail()
 	}
 
-	if _, ok := stor.items[testKey]; ok {
+	if _, ok := stor.(*storage[string]).items[testKey]; ok {
 		t.Log("found deleted value")
 		t.Fail()
 	}
@@ -149,10 +192,10 @@ func TestCleaner(t *testing.T) {
 func TestSaveLoadFile(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorage[string]().WithExpiration(testExpiration)
 
 	// test
-	stor.SetTemporarily(testKey, testValue, testExpiration)
+	stor.Set(testKey, testValue)
 
 	err := stor.SaveFile("testfile")
 	if err != nil {
@@ -180,32 +223,36 @@ func TestSaveLoadFile(t *testing.T) {
 
 /* BENCHMARKS */
 
-func BenchmarkSetForever(b *testing.B) {
-	// preparation
-	stor := NewStorage[string]()
-
-	// test
-	for i := 0; i < b.N; i++ {
-		stor.SetForever(testKey, testValue)
-	}
-}
-
-func BenchmarkSet(b *testing.B) {
+func BenchmarkSetGet(b *testing.B) {
 	// preparation
 	stor := NewStorage[string]()
 
 	// test
 	for i := 0; i < b.N; i++ {
 		stor.Set(testKey, testValue)
+		stor.Get(testKey)
 	}
 }
 
-func BenchmarkSetDefault(b *testing.B) {
+func BenchmarkSetGetWithExpiration(b *testing.B) {
 	// preparation
-	stor := NewStorage[string]().DefaultExpiration(testExpiration)
+	stor := NewStorage[string]().WithExpiration(testExpiration)
 
 	// test
 	for i := 0; i < b.N; i++ {
 		stor.Set(testKey, testValue)
+		stor.Get(testKey)
+	}
+}
+
+func BenchmarkSetGetSetWithFetch(b *testing.B) {
+	// preparation
+	stor := NewStorage[string]()
+
+	// test
+	for i := 0; i < b.N; i++ {
+		stor.GetFetch(testKey, func(string) (string, error) {
+			return testValue, nil
+		})
 	}
 }
