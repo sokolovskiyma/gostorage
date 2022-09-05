@@ -5,33 +5,37 @@
 
 ## Пример использования
 
-    // Создание экземпляра с указанием типа данных
-    // временем жизни и переодической очисткой данных
-	stor := NewStorage[string]().DefaultExpiration(5 * time.Second).WithCleaner(5 * time.Minute)
+	// Создание экземпляра с указанием типа данных
+	// временем жизни и переодической очисткой данных
+	newStorage := NewStorage[string]().WithExpiration(5 * time.Second).WithCleaner(5 * time.Minute)
 
 	// Запись значения
-	stor.Set("key", "value")
+	newStorage.Set("key", "value")
 
-    // Чтение значения
-    if value, ok := stor.Get("key"); ok {
+	// Чтение значения
+	if value, ok := newStorage.Get("key"); ok {
 		fmt.Printf("value - %v", value)
 	} else if value != testValue {
 		fmt.Print("there is no value")
 	}
 
-    // Сохранение в файл
-	err := stor.SaveFile("savefile")
+	value, ok := stor.GetFetch(testKey, func(s string) (string, error) {
+		return testValue, nil
+	})
+
+	// Сохранение в файл
+	err := newStorage.SaveFile("savefile")
 	if err != nil {
 		// обработка ошибок
 	}
 
 	// Создание из файла
-	stor2 := NewStorage[string]()
-	err = stor2.LoadFile("savefile")
+	newStorage2 := NewStorage[string]()
+	err = newStorage2.LoadFile("savefile")
 	if err != nil {
 		// обработка ошибок
 	}
 
 	// Хеш секционирование
-	stor := NewStorageShards[string](5)
+	newStorageShards := NewStorageShards[string](5)
 	stor.Set(testKey, testValue)

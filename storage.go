@@ -10,20 +10,6 @@ import (
 	"github.com/sokolovskiyma/gostorage/item"
 )
 
-// type comerableCustom interface {
-// 	Bytes() []byte
-// }
-
-// type stringCustom string
-
-// func (s *stringCustom) Bytes() []byte {
-// 	return []byte{}
-// }
-
-// type Number interface {
-// 	~int | ~int8 | ~int16 | ~int32 | ~int64 | ~float32 | ~float64
-// }
-
 type storage[V any] struct {
 	mu                 sync.RWMutex
 	items              map[string]*item.Item[V]
