@@ -1,6 +1,7 @@
 package gostorage
 
 import (
+	"errors"
 	"testing"
 	"time"
 )
@@ -69,6 +70,15 @@ func TestWithFetch(t *testing.T) {
 
 	if value != testValue {
 		t.Logf("value %+v != %+v\n", value, testValue)
+		t.Fail()
+	}
+
+	_, ok = stor.GetFetch("foo", func(s string) (string, error) {
+		return "", errors.New("no value")
+	})
+
+	if ok {
+		t.Log("found nonexistent value")
 		t.Fail()
 	}
 }

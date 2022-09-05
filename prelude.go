@@ -3,7 +3,7 @@ package gostorage
 import (
 	"time"
 
-	"github.com/sokolovskiyma/gostorage/item"
+	"github.com/sokolovskiyma/gostorage/v2/item"
 )
 
 type Storage[V any] interface {

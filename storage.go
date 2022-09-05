@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sokolovskiyma/gostorage/item"
+	"github.com/sokolovskiyma/gostorage/v2/item"
 )
 
 type storage[V any] struct {
