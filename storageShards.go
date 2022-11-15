@@ -5,30 +5,29 @@ import (
 	"hash/fnv"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/sokolovskiyma/gostorage/v2/item"
 )
 
 type storageShards[V any] struct {
-	mu     sync.RWMutex
-	shards []*storage[V]
+	mu       *sync.RWMutex
+	shards   []*storage[V]
+	settings Settings
 }
 
 // Setup
 
-func (ss *storageShards[V]) WithExpiration(defalultExpiration time.Duration) Storage[V] {
-	for index := range ss.shards {
-		ss.shards[index].WithExpiration(defalultExpiration)
+func newStorageShards[V any](settings Settings) *storageShards[V] {
+	storage := storageShards[V]{
+		mu:       &sync.RWMutex{},
+		settings: settings,
 	}
-	return ss
-}
 
-func (ss *storageShards[V]) WithCleaner(cleanupIntrval time.Duration) Storage[V] {
-	for index := range ss.shards {
-		ss.shards[index].WithCleaner(cleanupIntrval)
+	for i := 0; i < int(settings.ShardsQuantity); i++ {
+		storage.shards = append(storage.shards, newStorage[V](settings))
 	}
-	return ss
+
+	return &storage
 }
 
 // Actions

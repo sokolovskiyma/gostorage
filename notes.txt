@@ -1,0 +1,21 @@
+int64
+
+BenchmarkSetGet-8                 	16315759	        75.93 ns/op	      24 B/op	       1 allocs/op
+BenchmarkSetGetWithExpiration-8   	 8328982	       144.4 ns/op	      24 B/op	       1 allocs/op
+BenchmarkSetGetSetWithFetch-8     	39177184	        29.50 ns/op	       0 B/op	       0 allocs/op
+
+BenchmarkSetGet-8                 	18117126	        66.84 ns/op	      24 B/op	       1 allocs/op
+BenchmarkSetGetWithExpiration-8   	 8453037	       140.0 ns/op	      24 B/op	       1 allocs/op
+BenchmarkSetGetSetWithFetch-8     	40625155	        30.20 ns/op	       0 B/op	       0 allocs/op
+
+BenchmarkSetGet-8                 	17604834	        71.05 ns/op	      24 B/op	       1 allocs/op
+BenchmarkSetGetWithExpiration-8   	 8339750	       141.0 ns/op	      24 B/op	       1 allocs/op
+BenchmarkSetGetSetWithFetch-8     	40389991	        29.44 ns/op	       0 B/op	       0 allocs/op
+
+BenchmarkSetGet-8                 	17883826	        67.39 ns/op	      24 B/op	       1 allocs/op
+BenchmarkSetGetWithExpiration-8   	 8200178	       143.2 ns/op	      24 B/op	       1 allocs/op
+BenchmarkSetGetSetWithFetch-8     	40612550	        29.46 ns/op	       0 B/op	       0 allocs/op
+
+BenchmarkSetGet-8                 	16050056	        76.38 ns/op	      24 B/op	       1 allocs/op
+BenchmarkSetGetWithExpiration-8   	 8356422	       146.4 ns/op	      24 B/op	       1 allocs/op
+BenchmarkSetGetSetWithFetch-8     	38127192	        29.26 ns/op	       0 B/op	       0 allocs/op

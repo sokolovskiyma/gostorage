@@ -11,38 +11,32 @@ import (
 )
 
 type storage[V any] struct {
-	mu                 sync.RWMutex
-	items              map[string]*item.Item[V]
-	cleaner            *cleaner[V]
-	fetch              func(string) (V, error)
-	cleanupIntrval     time.Duration
-	defalultExpiration int64
+	mu       *sync.RWMutex
+	items    map[string]*item.Item[V]
+	cleaner  *cleaner[V]
+	settings Settings
 }
 
-// SETUP
-
-func (s *storage[V]) WithExpiration(defalultExpiration time.Duration) Storage[V] {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.defalultExpiration = int64(defalultExpiration)
-	return s
-}
-
-func (s *storage[V]) WithCleaner(cleanupIntrval time.Duration) Storage[V] {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if cleanupIntrval > 0 {
-		s.cleaner = &cleaner[V]{
-			Interval: cleanupIntrval,
-			stop:     make(chan bool),
-		}
-		go s.cleaner.Run(s)
-
-		runtime.SetFinalizer(s, stopCleaner[V])
+func newStorage[V any](settings Settings) *storage[V] {
+	storage := storage[V]{
+		mu:       &sync.RWMutex{},
+		items:    make(map[string]*item.Item[V]),
+		settings: settings,
 	}
 
-	return s
+	if storage.settings.CleanupInterval > 0 {
+		storage.cleaner = &cleaner[V]{
+			Interval: storage.settings.CleanupInterval,
+			stop:     make(chan bool),
+		}
+		go storage.cleaner.Run(&storage)
+
+		runtime.SetFinalizer(&storage, stopCleaner[V])
+	}
+
+	time.Now().IsZero()
+
+	return &storage
 }
 
 // ACTIONS
@@ -87,7 +81,7 @@ func (s *storage[V]) DeleteExpired() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	now := time.Now().UnixNano()
+	now := time.Now().Unix()
 	for key, value := range s.items {
 		if value.Expiration > 0 && now > value.Expiration {
 			delete(s.items, key)
@@ -105,7 +99,7 @@ func (s *storage[V]) Set(key string, value V) {
 }
 
 func (s *storage[V]) set(key string, value V) {
-	if s.defalultExpiration == 0 {
+	if s.settings.Expiration == 0 {
 		s.items[key] = &item.Item[V]{
 			Value:      value,
 			Expiration: 0,
@@ -113,7 +107,7 @@ func (s *storage[V]) set(key string, value V) {
 	} else {
 		s.items[key] = &item.Item[V]{
 			Value:      value,
-			Expiration: time.Now().UnixNano() + s.defalultExpiration,
+			Expiration: time.Now().Unix() + s.settings.Expiration,
 		}
 	}
 }
@@ -129,16 +123,8 @@ func (s *storage[V]) get(key string) (V, bool) {
 	var defalultValue V
 
 	if item, found := s.items[key]; found {
-		if item.Expiration == 0 || item.Expiration > time.Now().UnixNano() {
+		if item.Expiration == 0 || item.Expiration > time.Now().Unix() {
 			return item.Value, true
-		}
-	}
-
-	if s.fetch != nil {
-		value, err := s.fetch(key)
-		if err == nil {
-			s.set(key, value)
-			return value, true
 		}
 	}
 

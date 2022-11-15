@@ -15,7 +15,11 @@ import (
 /* TESTS */
 
 func TestNewStorageShards(t *testing.T) {
-	stor := NewStorageShards[any](5)
+	stor := NewStorage[any](Settings{
+		Expiration:      0,
+		CleanupInterval: 0,
+		ShardsQuantity:  5,
+	})
 
 	if stor == nil {
 		t.Log("stor == nil")

@@ -9,13 +9,14 @@ import (
 const (
 	testKey        = "testKey"
 	testValue      = "testValue"
-	testExpiration = 5 * time.Second
+	testExpiration = 5
+	testSleep      = 5 * time.Second
 )
 
 /* TESTS */
 
 func TestNewStorage(t *testing.T) {
-	stor := NewStorage[any]()
+	stor := newStorage[any](EmptySettings())
 
 	if stor == nil {
 		t.Log("stor == nil")
@@ -26,7 +27,7 @@ func TestNewStorage(t *testing.T) {
 func TestSet(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorage[string](EmptySettings())
 
 	// test
 	stor.Set(testKey, testValue)
@@ -35,7 +36,7 @@ func TestSet(t *testing.T) {
 func TestGet(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorage[string](EmptySettings())
 
 	// test
 	stor.Set(testKey, testValue)
@@ -56,7 +57,7 @@ func TestGet(t *testing.T) {
 
 func TestWithFetch(t *testing.T) {
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorage[string](EmptySettings())
 
 	// test
 	value, ok := stor.GetFetch(testKey, func(s string) (string, error) {
@@ -86,7 +87,7 @@ func TestWithFetch(t *testing.T) {
 func TestDelete(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorage[string](EmptySettings())
 
 	// test
 	stor.Set(testKey, testValue)
@@ -101,7 +102,7 @@ func TestDelete(t *testing.T) {
 func TestKeys(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorage[string](EmptySettings())
 	stor.Set("one", testValue)
 	stor.Set("two", testValue)
 	stor.Set("three", testValue)
@@ -122,7 +123,7 @@ func TestKeys(t *testing.T) {
 
 func TestGetWithExpiration(t *testing.T) {
 	// preparation
-	stor := NewStorage[string]().WithExpiration(testExpiration)
+	stor := NewStorage[string](DefalultSettings(testExpiration))
 
 	// test
 	stor.Set(testKey, testValue)
@@ -135,7 +136,7 @@ func TestGetWithExpiration(t *testing.T) {
 		t.Fail()
 	}
 
-	time.Sleep(testExpiration)
+	time.Sleep(testSleep)
 
 	if value, ok := stor.Get(testKey); ok || value != "" {
 		t.Log("found expired value")
@@ -145,7 +146,7 @@ func TestGetWithExpiration(t *testing.T) {
 
 func TestWithExpiration(t *testing.T) {
 	// preparation
-	stor := NewStorage[string]().WithExpiration(testExpiration)
+	stor := NewStorage[string](DefalultSettings(testExpiration))
 
 	// test
 	stor.Set(testKey, testValue)
@@ -158,7 +159,7 @@ func TestWithExpiration(t *testing.T) {
 		t.Fail()
 	}
 
-	time.Sleep(testExpiration)
+	time.Sleep(testSleep)
 
 	if value, ok := stor.Get(testKey); ok || value != "" {
 		t.Log("found expired value")
@@ -169,11 +170,15 @@ func TestWithExpiration(t *testing.T) {
 func TestWithCleaner(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string]().WithCleaner(time.Second)
+	stor := NewStorage[string](Settings{
+		Expiration:      5,
+		CleanupInterval: 1,
+		ShardsQuantity:  0,
+	})
 
 	// test
 	stor.Set(testKey, testValue)
-	time.Sleep(testExpiration)
+	time.Sleep(2 * time.Second)
 
 	if value, ok := stor.Get(testKey); !ok || value == "" {
 		t.Log("there is no value 'test'")
@@ -184,9 +189,8 @@ func TestWithCleaner(t *testing.T) {
 	}
 
 	// test
-	stor.WithExpiration(time.Second)
 	stor.Set(testKey, testValue)
-	time.Sleep(testExpiration)
+	time.Sleep(8 * time.Second)
 
 	if value, ok := stor.Get(testKey); ok || value != "" {
 		t.Log("found expired value")
@@ -202,7 +206,7 @@ func TestWithCleaner(t *testing.T) {
 func TestSaveLoadFile(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string]().WithExpiration(testExpiration)
+	stor := NewStorage[string](DefalultSettings(testExpiration))
 
 	// test
 	stor.Set(testKey, testValue)
@@ -214,7 +218,7 @@ func TestSaveLoadFile(t *testing.T) {
 	}
 
 	// test
-	stor2 := NewStorage[string]()
+	stor2 := NewStorage[string](EmptySettings())
 	err = stor2.LoadFile("testfile")
 	if err != nil {
 		t.Log("cant load file", err.Error())
@@ -235,7 +239,7 @@ func TestSaveLoadFile(t *testing.T) {
 
 func BenchmarkSetGet(b *testing.B) {
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorage[string](EmptySettings())
 
 	// test
 	for i := 0; i < b.N; i++ {
@@ -246,7 +250,7 @@ func BenchmarkSetGet(b *testing.B) {
 
 func BenchmarkSetGetWithExpiration(b *testing.B) {
 	// preparation
-	stor := NewStorage[string]().WithExpiration(testExpiration)
+	stor := NewStorage[string](DefalultSettings(testExpiration))
 
 	// test
 	for i := 0; i < b.N; i++ {
@@ -257,7 +261,7 @@ func BenchmarkSetGetWithExpiration(b *testing.B) {
 
 func BenchmarkSetGetSetWithFetch(b *testing.B) {
 	// preparation
-	stor := NewStorage[string]()
+	stor := NewStorage[string](EmptySettings())
 
 	// test
 	for i := 0; i < b.N; i++ {

@@ -3,12 +3,12 @@ package gostorage
 import "time"
 
 type cleaner[V any] struct {
-	Interval time.Duration
+	Interval int64
 	stop     chan bool
 }
 
 func (c *cleaner[V]) Run(s *storage[V]) {
-	ticker := time.NewTicker(c.Interval)
+	ticker := time.NewTicker(time.Duration(c.Interval) * time.Second)
 	for {
 		select {
 		case <-ticker.C:
