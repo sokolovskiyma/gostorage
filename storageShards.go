@@ -5,25 +5,23 @@ import (
 	"hash/fnv"
 	"os"
 	"sync"
-
-	"github.com/sokolovskiyma/gostorage/v2/item"
 )
 
 type storageShards[V any] struct {
 	mu       *sync.RWMutex
 	shards   []*storage[V]
-	settings Settings
+	settings iternalSettings
 }
 
 // Setup
 
-func newStorageShards[V any](settings Settings) *storageShards[V] {
+func newStorageShards[V any](settings iternalSettings) *storageShards[V] {
 	storage := storageShards[V]{
 		mu:       &sync.RWMutex{},
 		settings: settings,
 	}
 
-	for i := 0; i < int(settings.ShardsQuantity); i++ {
+	for i := 0; i < int(settings.shards); i++ {
 		storage.shards = append(storage.shards, newStorage[V](settings))
 	}
 
@@ -42,7 +40,7 @@ func (ss *storageShards[V]) SaveFile(filename string) (err error) {
 	}
 	defer file.Close()
 
-	temp := make([]map[string]*item.Item[V], 0, len(ss.shards))
+	temp := make([]map[string]*Item[V], 0, len(ss.shards))
 	for index := range ss.shards {
 		temp = append(temp, ss.shards[index].items)
 	}
@@ -64,7 +62,7 @@ func (ss *storageShards[V]) LoadFile(filename string) (err error) {
 	}
 	defer file.Close()
 
-	temp := make([]map[string]*item.Item[V], 0, len(ss.shards))
+	temp := make([]map[string]*Item[V], 0, len(ss.shards))
 	err = gob.NewDecoder(file).Decode(&temp)
 	if err != nil {
 		return
@@ -88,7 +86,7 @@ func (ss *storageShards[V]) DeleteExpired() {
 func (ss *storageShards[V]) shardByKey(key string) *storage[V] {
 	hash := fnv.New32()
 	hash.Write([]byte(key))
-	return ss.shards[int(hash.Sum32())%len(ss.shards)]
+	return ss.shards[int(hash.Sum32())%ss.settings.shards]
 }
 
 func (ss *storageShards[V]) Set(key string, value V) {
@@ -99,8 +97,8 @@ func (ss *storageShards[V]) Get(key string) (V, bool) {
 	return ss.shardByKey(key).Get(key)
 }
 
-func (ss *storageShards[V]) GetFetch(key string, f func(string) (V, error)) (V, bool) {
-	return ss.shardByKey(key).GetFetch(key, f)
+func (ss *storageShards[V]) Fetch(key string, f func(string) (V, bool)) (V, bool) {
+	return ss.shardByKey(key).Fetch(key, f)
 }
 
 func (ss *storageShards[V]) Delete(key string) {

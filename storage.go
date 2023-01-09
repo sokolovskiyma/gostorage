@@ -6,35 +6,31 @@ import (
 	"runtime"
 	"sync"
 	"time"
-
-	"github.com/sokolovskiyma/gostorage/v2/item"
 )
 
 type storage[V any] struct {
 	mu       *sync.RWMutex
-	items    map[string]*item.Item[V]
+	items    map[string]*Item[V]
 	cleaner  *cleaner[V]
-	settings Settings
+	settings iternalSettings
 }
 
-func newStorage[V any](settings Settings) *storage[V] {
+func newStorage[V any](settings iternalSettings) *storage[V] {
 	storage := storage[V]{
 		mu:       &sync.RWMutex{},
-		items:    make(map[string]*item.Item[V]),
+		items:    make(map[string]*Item[V]),
 		settings: settings,
 	}
 
-	if storage.settings.CleanupInterval > 0 {
+	if storage.settings.cleanup > 0 {
 		storage.cleaner = &cleaner[V]{
-			Interval: storage.settings.CleanupInterval,
+			Interval: storage.settings.cleanup,
 			stop:     make(chan bool),
 		}
 		go storage.cleaner.Run(&storage)
 
 		runtime.SetFinalizer(&storage, stopCleaner[V])
 	}
-
-	time.Now().IsZero()
 
 	return &storage
 }
@@ -81,7 +77,7 @@ func (s *storage[V]) DeleteExpired() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	now := time.Now().Unix()
+	now := time.Now().UnixNano()
 	for key, value := range s.items {
 		if value.Expiration > 0 && now > value.Expiration {
 			delete(s.items, key)
@@ -99,15 +95,15 @@ func (s *storage[V]) Set(key string, value V) {
 }
 
 func (s *storage[V]) set(key string, value V) {
-	if s.settings.Expiration == 0 {
-		s.items[key] = &item.Item[V]{
+	if s.settings.expiration == 0 {
+		s.items[key] = &Item[V]{
 			Value:      value,
 			Expiration: 0,
 		}
 	} else {
-		s.items[key] = &item.Item[V]{
+		s.items[key] = &Item[V]{
 			Value:      value,
-			Expiration: time.Now().Unix() + s.settings.Expiration,
+			Expiration: time.Now().UnixNano() + s.settings.expiration,
 		}
 	}
 }
@@ -123,7 +119,7 @@ func (s *storage[V]) get(key string) (V, bool) {
 	var defalultValue V
 
 	if item, found := s.items[key]; found {
-		if item.Expiration == 0 || item.Expiration > time.Now().Unix() {
+		if item.Expiration == 0 || item.Expiration > time.Now().UnixNano() {
 			return item.Value, true
 		}
 	}
@@ -131,7 +127,7 @@ func (s *storage[V]) get(key string) (V, bool) {
 	return defalultValue, false
 }
 
-func (s *storage[V]) GetFetch(key string, f func(string) (V, error)) (V, bool) {
+func (s *storage[V]) Fetch(key string, f func(string) (V, bool)) (V, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -140,7 +136,7 @@ func (s *storage[V]) GetFetch(key string, f func(string) (V, error)) (V, bool) {
 		return value, ok
 	}
 
-	if value, err := f(key); err == nil {
+	if value, ok := f(key); ok {
 		s.set(key, value)
 		return value, true
 	}

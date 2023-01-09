@@ -1,7 +1,7 @@
 package gostorage
 
 import (
-	"errors"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -9,14 +9,14 @@ import (
 const (
 	testKey        = "testKey"
 	testValue      = "testValue"
-	testExpiration = 5
+	testExpiration = 5 * time.Second
 	testSleep      = 5 * time.Second
 )
 
 /* TESTS */
 
 func TestNewStorage(t *testing.T) {
-	stor := newStorage[any](EmptySettings())
+	stor := NewStorage[any](EmptySettings())
 
 	if stor == nil {
 		t.Log("stor == nil")
@@ -60,8 +60,8 @@ func TestWithFetch(t *testing.T) {
 	stor := NewStorage[string](EmptySettings())
 
 	// test
-	value, ok := stor.GetFetch(testKey, func(s string) (string, error) {
-		return testValue, nil
+	value, ok := stor.Fetch(testKey, func(s string) (string, bool) {
+		return testValue, true
 	})
 
 	if !ok {
@@ -74,8 +74,8 @@ func TestWithFetch(t *testing.T) {
 		t.Fail()
 	}
 
-	_, ok = stor.GetFetch("foo", func(s string) (string, error) {
-		return "", errors.New("no value")
+	_, ok = stor.Fetch("foo", func(s string) (string, bool) {
+		return "", false
 	})
 
 	if ok {
@@ -171,9 +171,9 @@ func TestWithCleaner(t *testing.T) {
 
 	// preparation
 	stor := NewStorage[string](Settings{
-		Expiration:      5,
-		CleanupInterval: 1,
-		ShardsQuantity:  0,
+		Expiration: testExpiration,
+		Cleanup:    time.Second,
+		Shards:     0,
 	})
 
 	// test
@@ -243,8 +243,9 @@ func BenchmarkSetGet(b *testing.B) {
 
 	// test
 	for i := 0; i < b.N; i++ {
-		stor.Set(testKey, testValue)
-		stor.Get(testKey)
+		key := strconv.Itoa(b.N)
+		stor.Set(key, key)
+		stor.Get(key)
 	}
 }
 
@@ -254,8 +255,9 @@ func BenchmarkSetGetWithExpiration(b *testing.B) {
 
 	// test
 	for i := 0; i < b.N; i++ {
-		stor.Set(testKey, testValue)
-		stor.Get(testKey)
+		key := strconv.Itoa(b.N)
+		stor.Set(key, key)
+		stor.Get(key)
 	}
 }
 
@@ -265,8 +267,10 @@ func BenchmarkSetGetSetWithFetch(b *testing.B) {
 
 	// test
 	for i := 0; i < b.N; i++ {
-		stor.GetFetch(testKey, func(string) (string, error) {
-			return testValue, nil
-		})
+		key := strconv.Itoa(b.N)
+		stor.Fetch(key,
+			func(string) (string, bool) {
+				return key, true
+			})
 	}
 }

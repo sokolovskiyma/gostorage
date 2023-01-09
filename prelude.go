@@ -1,47 +1,62 @@
 package gostorage
 
-type Storage[V any] interface {
-	// WithCleaner(time.Duration) Storage[V]
-	// WithExpiration(time.Duration) Storage[V]
+import "time"
 
+type Storage[V any] interface {
 	SaveFile(string) error
 	LoadFile(string) error
 	DeleteExpired()
 
 	Get(string) (V, bool)
-	GetFetch(string, func(string) (V, error)) (V, bool)
+	Fetch(string, func(string) (V, bool)) (V, bool)
 	Set(string, V)
 	Delete(string)
 	Keys() []string
 }
 
-type Settings struct {
-	Expiration      int64
-	CleanupInterval int64
-	ShardsQuantity  uint64
-}
+type (
+	Settings struct {
+		Expiration time.Duration
+		Cleanup    time.Duration
+		Shards     uint32
+	}
+	iternalSettings struct {
+		expiration int64
+		cleanup    time.Duration
+		shards     int
+	}
+)
 
 func EmptySettings() Settings {
 	return Settings{
-		Expiration:      0,
-		CleanupInterval: 0,
-		ShardsQuantity:  1,
+		Expiration: 0,
+		Cleanup:    0,
+		Shards:     1,
 	}
 }
 
-func DefalultSettings(expiration int64) Settings {
+func DefalultSettings(expiration time.Duration) Settings {
 	return Settings{
-		Expiration:      int64(expiration),
-		CleanupInterval: 0,
-		ShardsQuantity:  1,
+		Expiration: expiration,
+		Cleanup:    0,
+		Shards:     1,
 	}
 }
 
 func NewStorage[V any](settings Settings) Storage[V] {
-	if settings.ShardsQuantity > 1 {
-		return newStorageShards[V](settings)
+	if settings.Shards == 0 {
+		settings.Shards = 1
 	}
 
-	return newStorage[V](settings)
+	set := iternalSettings{
+		expiration: int64(settings.Expiration),
+		cleanup:    settings.Cleanup,
+		shards:     int(settings.Shards),
+	}
 
+	if settings.Shards > 1 {
+		return newStorageShards[V](set)
+	}
+
+	return newStorage[V](set)
 }

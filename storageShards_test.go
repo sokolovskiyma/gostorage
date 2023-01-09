@@ -1,24 +1,18 @@
 package gostorage
 
 import (
+	"strconv"
 	"testing"
 	"time"
 )
-
-// TODO
-// const (
-// 	testKeyShards        = "testKeyShards"
-// 	testValueShards      = "testValueShards"
-// 	testExpirationShards = 5 * time.Second
-// )
 
 /* TESTS */
 
 func TestNewStorageShards(t *testing.T) {
 	stor := NewStorage[any](Settings{
-		Expiration:      0,
-		CleanupInterval: 0,
-		ShardsQuantity:  5,
+		Expiration: 0,
+		Cleanup:    0,
+		Shards:     5,
 	})
 
 	if stor == nil {
@@ -30,7 +24,11 @@ func TestNewStorageShards(t *testing.T) {
 func TestSetShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorageShards[string](5)
+	stor := NewStorage[string](Settings{
+		Expiration: 0,
+		Cleanup:    0,
+		Shards:     5,
+	})
 
 	// test
 	stor.Set(testKey, testValue)
@@ -39,7 +37,11 @@ func TestSetShards(t *testing.T) {
 func TestGetShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorageShards[string](5)
+	stor := NewStorage[string](Settings{
+		Expiration: 0,
+		Cleanup:    0,
+		Shards:     5,
+	})
 
 	// test
 	stor.Set(testKey, testValue)
@@ -61,11 +63,15 @@ func TestGetShards(t *testing.T) {
 func TestWithFetchShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorageShards[string](5)
+	stor := NewStorage[string](Settings{
+		Expiration: 0,
+		Cleanup:    0,
+		Shards:     5,
+	})
 
 	// test
-	value, ok := stor.GetFetch(testKey, func(s string) (string, error) {
-		return testValue, nil
+	value, ok := stor.Fetch(testKey, func(s string) (string, bool) {
+		return testValue, true
 	})
 
 	if !ok {
@@ -82,7 +88,11 @@ func TestWithFetchShards(t *testing.T) {
 func TestDeleteShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorageShards[string](5)
+	stor := NewStorage[string](Settings{
+		Expiration: 0,
+		Cleanup:    0,
+		Shards:     5,
+	})
 
 	// test
 	stor.Set(testKey, testValue)
@@ -97,7 +107,11 @@ func TestDeleteShards(t *testing.T) {
 func TestKeysShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorageShards[string](5)
+	stor := NewStorage[string](Settings{
+		Expiration: 0,
+		Cleanup:    0,
+		Shards:     5,
+	})
 	stor.Set("one", testValue)
 	stor.Set("two", testValue)
 	stor.Set("three", testValue)
@@ -118,7 +132,11 @@ func TestKeysShards(t *testing.T) {
 
 func TestGetWithExpirationShards(t *testing.T) {
 	// preparation
-	stor := NewStorageShards[string](5)
+	stor := NewStorage[string](Settings{
+		Expiration: 0,
+		Cleanup:    0,
+		Shards:     5,
+	})
 
 	// test
 	stor.Set(testKey, testValue)
@@ -131,9 +149,13 @@ func TestGetWithExpirationShards(t *testing.T) {
 		t.Fail()
 	}
 
-	stor.WithExpiration(testExpiration)
+	stor = NewStorage[string](Settings{
+		Expiration: 5,
+		Cleanup:    0,
+		Shards:     5,
+	})
 	stor.Set(testKey, testValue)
-	time.Sleep(testExpiration)
+	time.Sleep(testSleep)
 
 	if value, ok := stor.Get(testKey); ok || value != "" {
 		t.Log("found expired value")
@@ -143,7 +165,11 @@ func TestGetWithExpirationShards(t *testing.T) {
 
 func TestWithExpirationShards(t *testing.T) {
 	// preparation
-	stor := NewStorageShards[string](5).WithExpiration(testExpiration)
+	stor := NewStorage[string](Settings{
+		Expiration: testExpiration,
+		Cleanup:    0,
+		Shards:     5,
+	})
 
 	// test
 	stor.Set(testKey, testValue)
@@ -156,7 +182,7 @@ func TestWithExpirationShards(t *testing.T) {
 		t.Fail()
 	}
 
-	time.Sleep(testExpiration)
+	time.Sleep(testSleep)
 
 	if value, ok := stor.Get(testKey); ok || value != "" {
 		t.Log("found expired value")
@@ -167,11 +193,15 @@ func TestWithExpirationShards(t *testing.T) {
 func TestWithCleanerShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorageShards[string](5).WithCleaner(time.Second)
+	stor := NewStorage[string](Settings{
+		Expiration: 0,
+		Cleanup:    1,
+		Shards:     5,
+	})
 
 	// test
 	stor.Set(testKey, testValue)
-	time.Sleep(testExpiration)
+	time.Sleep(testSleep)
 
 	if value, ok := stor.Get(testKey); !ok || value == "" {
 		t.Log("there is no value 'test'")
@@ -182,9 +212,13 @@ func TestWithCleanerShards(t *testing.T) {
 	}
 
 	// test
-	stor.WithExpiration(testExpiration)
+	stor = NewStorage[string](Settings{
+		Expiration: 5,
+		Cleanup:    1,
+		Shards:     5,
+	})
 	stor.Set(testKey, testValue)
-	time.Sleep(testExpiration)
+	time.Sleep(testSleep)
 
 	if value, ok := stor.Get(testKey); ok || value != "" {
 		t.Log("found expired value")
@@ -200,7 +234,11 @@ func TestWithCleanerShards(t *testing.T) {
 func TestSaveLoadFileShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorageShards[string](5).WithExpiration(testExpiration)
+	stor := NewStorage[string](Settings{
+		Expiration: testExpiration,
+		Cleanup:    0,
+		Shards:     5,
+	})
 
 	// test
 	stor.Set(testKey, testValue)
@@ -212,7 +250,11 @@ func TestSaveLoadFileShards(t *testing.T) {
 	}
 
 	// test
-	stor2 := NewStorageShards[string](5)
+	stor2 := NewStorage[string](Settings{
+		Expiration: 0,
+		Cleanup:    0,
+		Shards:     5,
+	})
 	err = stor2.LoadFile("testfile")
 	if err != nil {
 		t.Log("cant load file", err.Error())
@@ -233,34 +275,72 @@ func TestSaveLoadFileShards(t *testing.T) {
 
 func BenchmarkSetGetShards(b *testing.B) {
 	// preparation
-	stor := NewStorageShards[string](5)
+	stor := NewStorage[string](Settings{
+		Expiration: 0,
+		Cleanup:    0,
+		Shards:     10,
+	})
 
 	// test
 	for i := 0; i < b.N; i++ {
-		stor.Set(testKey, testValue)
-		stor.Get(testKey)
+		key := strconv.Itoa(b.N)
+		stor.Set(key, key)
+		value, has := stor.Get(key)
+		if !has {
+			b.Fatal("!has")
+		}
+		if value != key {
+			b.Fatal("value != key")
+		}
 	}
 }
 
 func BenchmarkSetGetWithExpirationShards(b *testing.B) {
 	// preparation
-	stor := NewStorageShards[string](5).WithExpiration(testExpiration)
+	stor := NewStorage[string](Settings{
+		Expiration: 5,
+		Cleanup:    0,
+		Shards:     5,
+	})
 
 	// test
 	for i := 0; i < b.N; i++ {
-		stor.Set(testKey, testValue)
-		stor.Get(testKey)
+		key := strconv.Itoa(b.N)
+		stor.Set(key, key)
+		stor.Get(key)
 	}
 }
 
 func BenchmarkSetGetSetWithFetchShards(b *testing.B) {
 	// preparation
-	stor := NewStorageShards[string](5)
+	stor := NewStorage[string](Settings{
+		Expiration: 0,
+		Cleanup:    0,
+		Shards:     5,
+	})
 
 	// test
 	for i := 0; i < b.N; i++ {
-		stor.GetFetch(testKey, func(string) (string, error) {
-			return testValue, nil
+		key := strconv.Itoa(b.N)
+		stor.Fetch(key, func(string) (string, bool) {
+			return key, true
 		})
+	}
+}
+
+func BenchmarkXxx(b *testing.B) {
+	b.StopTimer()
+	stor := NewStorage[int](Settings{
+		Expiration: 0,
+		Cleanup:    0,
+		Shards:     5,
+	})
+	b.StartTimer()
+
+	// test
+	for i := 0; i < b.N; i++ {
+		key := strconv.Itoa(b.N)
+		stor.Set(key, b.N)
+		stor.Get(key)
 	}
 }

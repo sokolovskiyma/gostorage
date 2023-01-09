@@ -1,4 +1,4 @@
-package item
+package gostorage
 
 type Item[V any] struct {
 	Value      V
