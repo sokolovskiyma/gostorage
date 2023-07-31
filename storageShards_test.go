@@ -231,57 +231,55 @@ func TestWithCleanerShards(t *testing.T) {
 	}
 }
 
-func TestSaveLoadFileShards(t *testing.T) {
+// func TestSaveLoadFileShards(t *testing.T) {
 
-	// preparation
-	stor := NewStorage[string](Settings{
-		Expiration: testExpiration,
-		Cleanup:    0,
-		Shards:     5,
-	})
+// 	// preparation
+// 	stor := NewStorage[string](Settings{
+// 		Expiration: testExpiration,
+// 		Cleanup:    0,
+// 		Shards:     5,
+// 	})
 
-	// test
-	stor.Set(testKey, testValue)
+// 	// test
+// 	stor.Set(testKey, testValue)
 
-	err := stor.SaveFile("testfile")
-	if err != nil {
-		t.Log("cant save file", err.Error())
-		t.Fail()
-	}
+// 	err := stor.SaveFile("testfile")
+// 	if err != nil {
+// 		t.Log("cant save file", err.Error())
+// 		t.Fail()
+// 	}
 
-	// test
-	stor2 := NewStorage[string](Settings{
-		Expiration: 0,
-		Cleanup:    0,
-		Shards:     5,
-	})
-	err = stor2.LoadFile("testfile")
-	if err != nil {
-		t.Log("cant load file", err.Error())
-		t.Fail()
-	}
+// 	// test
+// 	stor2 := NewStorage[string](Settings{
+// 		Expiration: 0,
+// 		Cleanup:    0,
+// 		Shards:     5,
+// 	})
+// 	err = stor2.LoadFile("testfile")
+// 	if err != nil {
+// 		t.Log("cant load file", err.Error())
+// 		t.Fail()
+// 	}
 
-	if value, ok := stor2.Get(testKey); !ok {
-		t.Log("there is no value 'test'")
-		t.Fail()
-	} else if value != testValue {
-		t.Logf("value %+v != %+v\n", value, testValue)
-		t.Fail()
-	}
+// 	if value, ok := stor2.Get(testKey); !ok {
+// 		t.Log("there is no value 'test'")
+// 		t.Fail()
+// 	} else if value != testValue {
+// 		t.Logf("value %+v != %+v\n", value, testValue)
+// 		t.Fail()
+// 	}
 
-}
+// }
 
 /* BENCHMARKS */
 
 func BenchmarkSetGetShards(b *testing.B) {
-	// preparation
 	stor := NewStorage[string](Settings{
 		Expiration: 0,
 		Cleanup:    0,
-		Shards:     10,
+		Shards:     32,
 	})
 
-	// test
 	for i := 0; i < b.N; i++ {
 		key := strconv.Itoa(b.N)
 		stor.Set(key, key)
@@ -296,14 +294,12 @@ func BenchmarkSetGetShards(b *testing.B) {
 }
 
 func BenchmarkSetGetWithExpirationShards(b *testing.B) {
-	// preparation
 	stor := NewStorage[string](Settings{
 		Expiration: 5,
 		Cleanup:    0,
-		Shards:     5,
+		Shards:     32,
 	})
 
-	// test
 	for i := 0; i < b.N; i++ {
 		key := strconv.Itoa(b.N)
 		stor.Set(key, key)
@@ -312,35 +308,16 @@ func BenchmarkSetGetWithExpirationShards(b *testing.B) {
 }
 
 func BenchmarkSetGetSetWithFetchShards(b *testing.B) {
-	// preparation
 	stor := NewStorage[string](Settings{
 		Expiration: 0,
 		Cleanup:    0,
-		Shards:     5,
+		Shards:     32,
 	})
 
-	// test
 	for i := 0; i < b.N; i++ {
 		key := strconv.Itoa(b.N)
-		stor.Fetch(key, func(string) (string, bool) {
-			return key, true
+		stor.Fetch(key, func(k string) (string, bool) {
+			return k, true
 		})
-	}
-}
-
-func BenchmarkXxx(b *testing.B) {
-	b.StopTimer()
-	stor := NewStorage[int](Settings{
-		Expiration: 0,
-		Cleanup:    0,
-		Shards:     5,
-	})
-	b.StartTimer()
-
-	// test
-	for i := 0; i < b.N; i++ {
-		key := strconv.Itoa(b.N)
-		stor.Set(key, b.N)
-		stor.Get(key)
 	}
 }

@@ -203,37 +203,37 @@ func TestWithCleaner(t *testing.T) {
 	}
 }
 
-func TestSaveLoadFile(t *testing.T) {
+// func TestSaveLoadFile(t *testing.T) {
 
-	// preparation
-	stor := NewStorage[string](DefalultSettings(testExpiration))
+// 	// preparation
+// 	stor := NewStorage[string](DefalultSettings(testExpiration))
 
-	// test
-	stor.Set(testKey, testValue)
+// 	// test
+// 	stor.Set(testKey, testValue)
 
-	err := stor.SaveFile("testfile")
-	if err != nil {
-		t.Log("cant save file", err.Error())
-		t.Fail()
-	}
+// 	err := stor.SaveFile("testfile")
+// 	if err != nil {
+// 		t.Log("cant save file", err.Error())
+// 		t.Fail()
+// 	}
 
-	// test
-	stor2 := NewStorage[string](EmptySettings())
-	err = stor2.LoadFile("testfile")
-	if err != nil {
-		t.Log("cant load file", err.Error())
-		t.Fail()
-	}
+// 	// test
+// 	stor2 := NewStorage[string](EmptySettings())
+// 	err = stor2.LoadFile("testfile")
+// 	if err != nil {
+// 		t.Log("cant load file", err.Error())
+// 		t.Fail()
+// 	}
 
-	if value, ok := stor2.Get(testKey); !ok {
-		t.Log("there is no value 'test'")
-		t.Fail()
-	} else if value != testValue {
-		t.Logf("value %+v != %+v\n", value, testValue)
-		t.Fail()
-	}
+// 	if value, ok := stor2.Get(testKey); !ok {
+// 		t.Log("there is no value 'test'")
+// 		t.Fail()
+// 	} else if value != testValue {
+// 		t.Logf("value %+v != %+v\n", value, testValue)
+// 		t.Fail()
+// 	}
 
-}
+// }
 
 /* BENCHMARKS */
 
@@ -269,8 +269,8 @@ func BenchmarkSetGetSetWithFetch(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		key := strconv.Itoa(b.N)
 		stor.Fetch(key,
-			func(string) (string, bool) {
-				return key, true
+			func(k string) (string, bool) {
+				return k, true
 			})
 	}
 }

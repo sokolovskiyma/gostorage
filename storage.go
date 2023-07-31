@@ -1,8 +1,6 @@
 package gostorage
 
 import (
-	"encoding/gob"
-	"os"
 	"runtime"
 	"sync"
 	"time"
@@ -10,15 +8,20 @@ import (
 
 type storage[V any] struct {
 	mu       *sync.RWMutex
-	items    map[string]*Item[V]
+	items    map[string]item[V]
 	cleaner  *cleaner[V]
 	settings iternalSettings
+}
+
+type item[V any] struct {
+	value      V
+	expiration int64
 }
 
 func newStorage[V any](settings iternalSettings) *storage[V] {
 	storage := storage[V]{
 		mu:       &sync.RWMutex{},
-		items:    make(map[string]*Item[V]),
+		items:    make(map[string]item[V]),
 		settings: settings,
 	}
 
@@ -37,41 +40,41 @@ func newStorage[V any](settings iternalSettings) *storage[V] {
 
 // ACTIONS
 
-func (s *storage[V]) SaveFile(filename string) (err error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+// func (s *storage[V]) SaveFile(filename string) (err error) {
+// 	s.mu.RLock()
+// 	defer s.mu.RUnlock()
 
-	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
-	if err != nil {
-		return
-	}
-	defer file.Close()
+// 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+// 	if err != nil {
+// 		return
+// 	}
+// 	defer file.Close()
 
-	err = gob.NewEncoder(file).Encode(s.items)
-	if err != nil {
-		return
-	}
+// 	err = gob.NewEncoder(file).Encode(s.items)
+// 	if err != nil {
+// 		return
+// 	}
 
-	return
-}
+// 	return
+// }
 
-func (s *storage[T]) LoadFile(filename string) (err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+// func (s *storage[T]) LoadFile(filename string) (err error) {
+// 	s.mu.Lock()
+// 	defer s.mu.Unlock()
 
-	file, err := os.Open(filename)
-	if err != nil {
-		return
-	}
-	defer file.Close()
+// 	file, err := os.Open(filename)
+// 	if err != nil {
+// 		return
+// 	}
+// 	defer file.Close()
 
-	err = gob.NewDecoder(file).Decode(&s.items)
-	if err != nil {
-		return
-	}
+// 	err = gob.NewDecoder(file).Decode(&s.items)
+// 	if err != nil {
+// 		return
+// 	}
 
-	return
-}
+// 	return
+// }
 
 func (s *storage[V]) DeleteExpired() {
 	s.mu.Lock()
@@ -79,7 +82,7 @@ func (s *storage[V]) DeleteExpired() {
 
 	now := time.Now().UnixNano()
 	for key, value := range s.items {
-		if value.Expiration > 0 && now > value.Expiration {
+		if value.expiration > 0 && now > value.expiration {
 			delete(s.items, key)
 		}
 	}
@@ -96,14 +99,14 @@ func (s *storage[V]) Set(key string, value V) {
 
 func (s *storage[V]) set(key string, value V) {
 	if s.settings.expiration == 0 {
-		s.items[key] = &Item[V]{
-			Value:      value,
-			Expiration: 0,
+		s.items[key] = item[V]{
+			value:      value,
+			expiration: 0,
 		}
 	} else {
-		s.items[key] = &Item[V]{
-			Value:      value,
-			Expiration: time.Now().UnixNano() + s.settings.expiration,
+		s.items[key] = item[V]{
+			value:      value,
+			expiration: time.Now().UnixNano() + s.settings.expiration,
 		}
 	}
 }
@@ -119,8 +122,8 @@ func (s *storage[V]) get(key string) (V, bool) {
 	var defalultValue V
 
 	if item, found := s.items[key]; found {
-		if item.Expiration == 0 || item.Expiration > time.Now().UnixNano() {
-			return item.Value, true
+		if item.expiration == 0 || item.expiration > time.Now().UnixNano() {
+			return item.value, true
 		}
 	}
 

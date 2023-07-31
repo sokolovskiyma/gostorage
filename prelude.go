@@ -3,8 +3,8 @@ package gostorage
 import "time"
 
 type Storage[V any] interface {
-	SaveFile(string) error
-	LoadFile(string) error
+	// SaveFile(string) error
+	// LoadFile(string) error
 	DeleteExpired()
 
 	Get(string) (V, bool)
@@ -47,6 +47,17 @@ func NewStorage[V any](settings Settings) Storage[V] {
 	if settings.Shards == 0 {
 		settings.Shards = 1
 	}
+
+	// TODO: int keys
+	// func (h *hasher[K]) detectHasher() {
+	// 	var k K
+	// 	switch ((interface{})(k)).(type) {
+	// 	case string:
+	// 		h.kstr = true
+	// 	default:
+	// 		h.ksize = int(unsafe.Sizeof(k))
+	// 	}
+	// }
 
 	set := iternalSettings{
 		expiration: int64(settings.Expiration),

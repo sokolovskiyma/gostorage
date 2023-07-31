@@ -1,24 +1,21 @@
 package gostorage
 
 import (
-	"encoding/gob"
-	"hash/fnv"
-	"os"
-	"sync"
+	"hash/maphash"
 )
 
 type storageShards[V any] struct {
-	mu       *sync.RWMutex
-	shards   []*storage[V]
-	settings iternalSettings
+	shards []*storage[V]
+	mask   uint64
+	seed   maphash.Seed
 }
 
 // Setup
 
 func newStorageShards[V any](settings iternalSettings) *storageShards[V] {
 	storage := storageShards[V]{
-		mu:       &sync.RWMutex{},
-		settings: settings,
+		mask: uint64(settings.shards - 1),
+		seed: maphash.MakeSeed(),
 	}
 
 	for i := 0; i < int(settings.shards); i++ {
@@ -30,50 +27,44 @@ func newStorageShards[V any](settings iternalSettings) *storageShards[V] {
 
 // Actions
 
-func (ss *storageShards[V]) SaveFile(filename string) (err error) {
-	ss.mu.Lock()
-	defer ss.mu.Unlock()
+// func (ss *storageShards[V]) SaveFile(filename string) (err error) {
+// 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+// 	if err != nil {
+// 		return
+// 	}
+// 	defer file.Close()
 
-	file, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
-	if err != nil {
-		return
-	}
-	defer file.Close()
+// 	temp := make([]map[string]*Item[V], 0, len(ss.shards))
+// 	for index := range ss.shards {
+// 		temp = append(temp, ss.shards[index].items)
+// 	}
+// 	err = gob.NewEncoder(file).Encode(temp)
+// 	if err != nil {
+// 		return
+// 	}
 
-	temp := make([]map[string]*Item[V], 0, len(ss.shards))
-	for index := range ss.shards {
-		temp = append(temp, ss.shards[index].items)
-	}
-	err = gob.NewEncoder(file).Encode(temp)
-	if err != nil {
-		return
-	}
+// 	return
+// }
 
-	return
-}
+// func (ss *storageShards[V]) LoadFile(filename string) (err error) {
+// 	file, err := os.Open(filename)
+// 	if err != nil {
+// 		return
+// 	}
+// 	defer file.Close()
 
-func (ss *storageShards[V]) LoadFile(filename string) (err error) {
-	ss.mu.Lock()
-	defer ss.mu.Unlock()
+// 	temp := make([]map[string]*Item[V], 0, len(ss.shards))
+// 	err = gob.NewDecoder(file).Decode(&temp)
+// 	if err != nil {
+// 		return
+// 	}
 
-	file, err := os.Open(filename)
-	if err != nil {
-		return
-	}
-	defer file.Close()
+// 	for index := range temp {
+// 		ss.shards[index].items = temp[index]
+// 	}
 
-	temp := make([]map[string]*Item[V], 0, len(ss.shards))
-	err = gob.NewDecoder(file).Decode(&temp)
-	if err != nil {
-		return
-	}
-
-	for index := range temp {
-		ss.shards[index].items = temp[index]
-	}
-
-	return
-}
+// 	return
+// }
 
 func (ss *storageShards[V]) DeleteExpired() {
 	for index := range ss.shards {
@@ -84,9 +75,12 @@ func (ss *storageShards[V]) DeleteExpired() {
 // FUNCTIONS
 
 func (ss *storageShards[V]) shardByKey(key string) *storage[V] {
-	hash := fnv.New32()
-	hash.Write([]byte(key))
-	return ss.shards[int(hash.Sum32())%ss.settings.shards]
+	// hash := fnv.New64()
+	// _, _ = hash.Write([]byte(key))
+	// return ss.shards[int(hash.Sum64()&ss.mask)]
+
+	// TODO: maphash
+	return ss.shards[maphash.String(ss.seed, key)&ss.mask]
 }
 
 func (ss *storageShards[V]) Set(key string, value V) {
@@ -106,9 +100,6 @@ func (ss *storageShards[V]) Delete(key string) {
 }
 
 func (ss *storageShards[V]) Keys() []string {
-	ss.mu.Lock()
-	defer ss.mu.Unlock()
-
 	var keys = make([]string, 0, 512)
 	for shardIndex := range ss.shards {
 		keys = append(keys, ss.shards[shardIndex].Keys()...)
