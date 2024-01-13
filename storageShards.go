@@ -4,22 +4,24 @@ import (
 	"hash/maphash"
 )
 
-type storageShards[V any] struct {
-	shards []*storage[V]
+type storageShards[K comparable, V any] struct {
+	shards []*storage[K, V]
 	mask   uint64
 	seed   maphash.Seed
+	ksize  int
+	kstr   bool
 }
 
 // Setup
 
-func newStorageShards[V any](settings iternalSettings) *storageShards[V] {
-	storage := storageShards[V]{
+func newStorageShards[K comparable, V any](settings iternalSettings) *storageShards[K, V] {
+	storage := storageShards[K, V]{
 		mask: uint64(settings.shards - 1),
 		seed: maphash.MakeSeed(),
 	}
 
 	for i := 0; i < int(settings.shards); i++ {
-		storage.shards = append(storage.shards, newStorage[V](settings))
+		storage.shards = append(storage.shards, newStorage[K, V](settings))
 	}
 
 	return &storage
@@ -66,7 +68,7 @@ func newStorageShards[V any](settings iternalSettings) *storageShards[V] {
 // 	return
 // }
 
-func (ss *storageShards[V]) DeleteExpired() {
+func (ss *storageShards[K, V]) DeleteExpired() {
 	for index := range ss.shards {
 		ss.shards[index].DeleteExpired()
 	}
@@ -74,33 +76,33 @@ func (ss *storageShards[V]) DeleteExpired() {
 
 // FUNCTIONS
 
-func (ss *storageShards[V]) shardByKey(key string) *storage[V] {
+func (ss *storageShards[K, V]) shardByKey(key K) *storage[K, V] {
 	// hash := fnv.New64()
 	// _, _ = hash.Write([]byte(key))
 	// return ss.shards[int(hash.Sum64()&ss.mask)]
 
 	// TODO: maphash
-	return ss.shards[maphash.String(ss.seed, key)&ss.mask]
+	return ss.shards[ss.hash(key)&ss.mask]
 }
 
-func (ss *storageShards[V]) Set(key string, value V) {
+func (ss *storageShards[K, V]) Set(key K, value V) {
 	ss.shardByKey(key).Set(key, value)
 }
 
-func (ss *storageShards[V]) Get(key string) (V, bool) {
+func (ss *storageShards[K, V]) Get(key K) (V, bool) {
 	return ss.shardByKey(key).Get(key)
 }
 
-func (ss *storageShards[V]) Fetch(key string, f func(string) (V, bool)) (V, bool) {
+func (ss *storageShards[K, V]) Fetch(key K, f func(K) (V, bool)) (V, bool) {
 	return ss.shardByKey(key).Fetch(key, f)
 }
 
-func (ss *storageShards[V]) Delete(key string) {
+func (ss *storageShards[K, V]) Delete(key K) {
 	ss.shardByKey(key).Delete(key)
 }
 
-func (ss *storageShards[V]) Keys() []string {
-	var keys = make([]string, 0, 512)
+func (ss *storageShards[K, V]) Keys() []K {
+	var keys = make([]K, 0, 512)
 	for shardIndex := range ss.shards {
 		keys = append(keys, ss.shards[shardIndex].Keys()...)
 	}

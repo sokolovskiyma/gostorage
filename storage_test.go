@@ -7,8 +7,10 @@ import (
 )
 
 const (
-	testKey        = "testKey"
-	testValue      = "testValue"
+	testKey   = "testKey"
+	testValue = "testValue"
+	// testKey        = 5
+	// testValue      = 6
 	testExpiration = 5 * time.Second
 	testSleep      = 5 * time.Second
 )
@@ -16,7 +18,7 @@ const (
 /* TESTS */
 
 func TestNewStorage(t *testing.T) {
-	stor := NewStorage[any](EmptySettings())
+	stor := NewStorage[string, any](EmptySettings())
 
 	if stor == nil {
 		t.Log("stor == nil")
@@ -27,7 +29,7 @@ func TestNewStorage(t *testing.T) {
 func TestSet(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string](EmptySettings())
+	stor := NewStorage[string, any](EmptySettings())
 
 	// test
 	stor.Set(testKey, testValue)
@@ -36,7 +38,7 @@ func TestSet(t *testing.T) {
 func TestGet(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string](EmptySettings())
+	stor := NewStorage[string, string](EmptySettings())
 
 	// test
 	stor.Set(testKey, testValue)
@@ -55,9 +57,31 @@ func TestGet(t *testing.T) {
 	}
 }
 
+func TestGetInt(t *testing.T) {
+
+	// preparation
+	stor := NewStorage[int, int](EmptySettings())
+
+	// test
+	stor.Set(5, 6)
+	if value, ok := stor.Get(5); !ok {
+		t.Log("there is no value 'test'")
+		t.Fail()
+	} else if value != 6 {
+		t.Logf("value %+v != %+v\n", value, 6)
+		t.Fail()
+	}
+
+	// test
+	if value, ok := stor.Get(69); ok || value != 0 {
+		t.Log("found nonexistent value")
+		t.Fail()
+	}
+}
+
 func TestWithFetch(t *testing.T) {
 	// preparation
-	stor := NewStorage[string](EmptySettings())
+	stor := NewStorage[string, string](EmptySettings())
 
 	// test
 	value, ok := stor.Fetch(testKey, func(s string) (string, bool) {
@@ -87,7 +111,7 @@ func TestWithFetch(t *testing.T) {
 func TestDelete(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string](EmptySettings())
+	stor := NewStorage[string, string](EmptySettings())
 
 	// test
 	stor.Set(testKey, testValue)
@@ -102,7 +126,7 @@ func TestDelete(t *testing.T) {
 func TestKeys(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string](EmptySettings())
+	stor := NewStorage[string, string](EmptySettings())
 	stor.Set("one", testValue)
 	stor.Set("two", testValue)
 	stor.Set("three", testValue)
@@ -123,7 +147,7 @@ func TestKeys(t *testing.T) {
 
 func TestGetWithExpiration(t *testing.T) {
 	// preparation
-	stor := NewStorage[string](DefalultSettings(testExpiration))
+	stor := NewStorage[string, string](DefaultSettings(testExpiration))
 
 	// test
 	stor.Set(testKey, testValue)
@@ -146,7 +170,7 @@ func TestGetWithExpiration(t *testing.T) {
 
 func TestWithExpiration(t *testing.T) {
 	// preparation
-	stor := NewStorage[string](DefalultSettings(testExpiration))
+	stor := NewStorage[string, string](DefaultSettings(testExpiration))
 
 	// test
 	stor.Set(testKey, testValue)
@@ -170,7 +194,7 @@ func TestWithExpiration(t *testing.T) {
 func TestWithCleaner(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string](Settings{
+	stor := NewStorage[string, string](Settings{
 		Expiration: testExpiration,
 		Cleanup:    time.Second,
 		Shards:     0,
@@ -197,7 +221,7 @@ func TestWithCleaner(t *testing.T) {
 		t.Fail()
 	}
 
-	if _, ok := stor.(*storage[string]).items[testKey]; ok {
+	if _, ok := stor.(*storage[string, string]).items[testKey]; ok {
 		t.Log("found deleted value")
 		t.Fail()
 	}
@@ -239,7 +263,7 @@ func TestWithCleaner(t *testing.T) {
 
 func BenchmarkSetGet(b *testing.B) {
 	// preparation
-	stor := NewStorage[string](EmptySettings())
+	stor := NewStorage[string, string](EmptySettings())
 
 	// test
 	for i := 0; i < b.N; i++ {
@@ -251,7 +275,7 @@ func BenchmarkSetGet(b *testing.B) {
 
 func BenchmarkSetGetWithExpiration(b *testing.B) {
 	// preparation
-	stor := NewStorage[string](DefalultSettings(testExpiration))
+	stor := NewStorage[string, string](DefaultSettings(testExpiration))
 
 	// test
 	for i := 0; i < b.N; i++ {
@@ -263,7 +287,7 @@ func BenchmarkSetGetWithExpiration(b *testing.B) {
 
 func BenchmarkSetGetSetWithFetch(b *testing.B) {
 	// preparation
-	stor := NewStorage[string](EmptySettings())
+	stor := NewStorage[string, string](EmptySettings())
 
 	// test
 	for i := 0; i < b.N; i++ {

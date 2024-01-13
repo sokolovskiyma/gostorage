@@ -2,16 +2,16 @@ package gostorage
 
 import "time"
 
-type Storage[V any] interface {
+type Storage[K comparable, V any] interface {
 	// SaveFile(string) error
 	// LoadFile(string) error
 	DeleteExpired()
 
-	Get(string) (V, bool)
-	Fetch(string, func(string) (V, bool)) (V, bool)
-	Set(string, V)
-	Delete(string)
-	Keys() []string
+	Get(K) (V, bool)
+	Fetch(K, func(K) (V, bool)) (V, bool)
+	Set(K, V)
+	Delete(K)
+	Keys() []K
 }
 
 type (
@@ -35,7 +35,7 @@ func EmptySettings() Settings {
 	}
 }
 
-func DefalultSettings(expiration time.Duration) Settings {
+func DefaultSettings(expiration time.Duration) Settings {
 	return Settings{
 		Expiration: expiration,
 		Cleanup:    0,
@@ -43,21 +43,10 @@ func DefalultSettings(expiration time.Duration) Settings {
 	}
 }
 
-func NewStorage[V any](settings Settings) Storage[V] {
+func NewStorage[K comparable, V any](settings Settings) Storage[K, V] {
 	if settings.Shards == 0 {
 		settings.Shards = 1
 	}
-
-	// TODO: int keys
-	// func (h *hasher[K]) detectHasher() {
-	// 	var k K
-	// 	switch ((interface{})(k)).(type) {
-	// 	case string:
-	// 		h.kstr = true
-	// 	default:
-	// 		h.ksize = int(unsafe.Sizeof(k))
-	// 	}
-	// }
 
 	set := iternalSettings{
 		expiration: int64(settings.Expiration),
@@ -66,8 +55,8 @@ func NewStorage[V any](settings Settings) Storage[V] {
 	}
 
 	if settings.Shards > 1 {
-		return newStorageShards[V](set)
+		return newStorageShards[K, V](set)
 	}
 
-	return newStorage[V](set)
+	return newStorage[K, V](set)
 }

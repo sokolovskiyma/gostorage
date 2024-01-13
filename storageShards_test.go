@@ -9,7 +9,7 @@ import (
 /* TESTS */
 
 func TestNewStorageShards(t *testing.T) {
-	stor := NewStorage[any](Settings{
+	stor := NewStorage[any, any](Settings{
 		Expiration: 0,
 		Cleanup:    0,
 		Shards:     5,
@@ -24,7 +24,7 @@ func TestNewStorageShards(t *testing.T) {
 func TestSetShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string](Settings{
+	stor := NewStorage[string, string](Settings{
 		Expiration: 0,
 		Cleanup:    0,
 		Shards:     5,
@@ -37,7 +37,7 @@ func TestSetShards(t *testing.T) {
 func TestGetShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string](Settings{
+	stor := NewStorage[string, string](Settings{
 		Expiration: 0,
 		Cleanup:    0,
 		Shards:     5,
@@ -63,7 +63,7 @@ func TestGetShards(t *testing.T) {
 func TestWithFetchShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string](Settings{
+	stor := NewStorage[string, string](Settings{
 		Expiration: 0,
 		Cleanup:    0,
 		Shards:     5,
@@ -88,7 +88,7 @@ func TestWithFetchShards(t *testing.T) {
 func TestDeleteShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string](Settings{
+	stor := NewStorage[string, string](Settings{
 		Expiration: 0,
 		Cleanup:    0,
 		Shards:     5,
@@ -107,7 +107,7 @@ func TestDeleteShards(t *testing.T) {
 func TestKeysShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string](Settings{
+	stor := NewStorage[string, string](Settings{
 		Expiration: 0,
 		Cleanup:    0,
 		Shards:     5,
@@ -132,7 +132,7 @@ func TestKeysShards(t *testing.T) {
 
 func TestGetWithExpirationShards(t *testing.T) {
 	// preparation
-	stor := NewStorage[string](Settings{
+	stor := NewStorage[string, string](Settings{
 		Expiration: 0,
 		Cleanup:    0,
 		Shards:     5,
@@ -149,7 +149,7 @@ func TestGetWithExpirationShards(t *testing.T) {
 		t.Fail()
 	}
 
-	stor = NewStorage[string](Settings{
+	stor = NewStorage[string, string](Settings{
 		Expiration: 5,
 		Cleanup:    0,
 		Shards:     5,
@@ -165,7 +165,7 @@ func TestGetWithExpirationShards(t *testing.T) {
 
 func TestWithExpirationShards(t *testing.T) {
 	// preparation
-	stor := NewStorage[string](Settings{
+	stor := NewStorage[string, string](Settings{
 		Expiration: testExpiration,
 		Cleanup:    0,
 		Shards:     5,
@@ -193,7 +193,7 @@ func TestWithExpirationShards(t *testing.T) {
 func TestWithCleanerShards(t *testing.T) {
 
 	// preparation
-	stor := NewStorage[string](Settings{
+	stor := NewStorage[string, string](Settings{
 		Expiration: 0,
 		Cleanup:    1,
 		Shards:     5,
@@ -212,7 +212,7 @@ func TestWithCleanerShards(t *testing.T) {
 	}
 
 	// test
-	stor = NewStorage[string](Settings{
+	stor = NewStorage[string, string](Settings{
 		Expiration: 5,
 		Cleanup:    1,
 		Shards:     5,
@@ -225,7 +225,7 @@ func TestWithCleanerShards(t *testing.T) {
 		t.Fail()
 	}
 
-	if _, ok := stor.(*storageShards[string]).shardByKey(testValue).items[testKey]; ok {
+	if _, ok := stor.(*storageShards[string, string]).shardByKey(testValue).items[testKey]; ok {
 		t.Log("found deleted value")
 		t.Fail()
 	}
@@ -234,7 +234,7 @@ func TestWithCleanerShards(t *testing.T) {
 // func TestSaveLoadFileShards(t *testing.T) {
 
 // 	// preparation
-// 	stor := NewStorage[string](Settings{
+// 	stor := NewStorage[string, string](Settings{
 // 		Expiration: testExpiration,
 // 		Cleanup:    0,
 // 		Shards:     5,
@@ -250,7 +250,7 @@ func TestWithCleanerShards(t *testing.T) {
 // 	}
 
 // 	// test
-// 	stor2 := NewStorage[string](Settings{
+// 	stor2 := NewStorage[string, string](Settings{
 // 		Expiration: 0,
 // 		Cleanup:    0,
 // 		Shards:     5,
@@ -274,7 +274,7 @@ func TestWithCleanerShards(t *testing.T) {
 /* BENCHMARKS */
 
 func BenchmarkSetGetShards(b *testing.B) {
-	stor := NewStorage[string](Settings{
+	stor := NewStorage[string, string](Settings{
 		Expiration: 0,
 		Cleanup:    0,
 		Shards:     32,
@@ -294,7 +294,7 @@ func BenchmarkSetGetShards(b *testing.B) {
 }
 
 func BenchmarkSetGetWithExpirationShards(b *testing.B) {
-	stor := NewStorage[string](Settings{
+	stor := NewStorage[string, string](Settings{
 		Expiration: 5,
 		Cleanup:    0,
 		Shards:     32,
@@ -308,7 +308,7 @@ func BenchmarkSetGetWithExpirationShards(b *testing.B) {
 }
 
 func BenchmarkSetGetSetWithFetchShards(b *testing.B) {
-	stor := NewStorage[string](Settings{
+	stor := NewStorage[string, string](Settings{
 		Expiration: 0,
 		Cleanup:    0,
 		Shards:     32,

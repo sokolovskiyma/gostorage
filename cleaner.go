@@ -2,12 +2,12 @@ package gostorage
 
 import "time"
 
-type cleaner[V any] struct {
+type cleaner[K comparable, V any] struct {
 	Interval time.Duration
 	stop     chan bool
 }
 
-func (c *cleaner[V]) Run(s *storage[V]) {
+func (c *cleaner[K, V]) Run(s *storage[K, V]) {
 	ticker := time.NewTicker(c.Interval)
 	for {
 		select {
@@ -20,6 +20,6 @@ func (c *cleaner[V]) Run(s *storage[V]) {
 	}
 }
 
-func stopCleaner[V any](s *storage[V]) {
+func stopCleaner[K comparable, V any](s *storage[K, V]) {
 	s.cleaner.stop <- true
 }

@@ -1,3 +1,3 @@
-module github.com/sokolovskiyma/gostorage/v3
+module github.com/sokolovskiyma/gostorage/v4
 
 go 1.20

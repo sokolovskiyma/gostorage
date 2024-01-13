@@ -6,10 +6,10 @@ import (
 	"time"
 )
 
-type storage[V any] struct {
+type storage[K comparable, V any] struct {
 	mu       *sync.RWMutex
-	items    map[string]item[V]
-	cleaner  *cleaner[V]
+	items    map[K]item[V]
+	cleaner  *cleaner[K, V]
 	settings iternalSettings
 }
 
@@ -18,21 +18,21 @@ type item[V any] struct {
 	expiration int64
 }
 
-func newStorage[V any](settings iternalSettings) *storage[V] {
-	storage := storage[V]{
+func newStorage[K comparable, V any](settings iternalSettings) *storage[K, V] {
+	storage := storage[K, V]{
 		mu:       &sync.RWMutex{},
-		items:    make(map[string]item[V]),
+		items:    make(map[K]item[V]),
 		settings: settings,
 	}
 
 	if storage.settings.cleanup > 0 {
-		storage.cleaner = &cleaner[V]{
+		storage.cleaner = &cleaner[K, V]{
 			Interval: storage.settings.cleanup,
 			stop:     make(chan bool),
 		}
 		go storage.cleaner.Run(&storage)
 
-		runtime.SetFinalizer(&storage, stopCleaner[V])
+		runtime.SetFinalizer(&storage, stopCleaner[K, V])
 	}
 
 	return &storage
@@ -76,7 +76,7 @@ func newStorage[V any](settings iternalSettings) *storage[V] {
 // 	return
 // }
 
-func (s *storage[V]) DeleteExpired() {
+func (s *storage[K, V]) DeleteExpired() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -90,14 +90,14 @@ func (s *storage[V]) DeleteExpired() {
 
 // FUNCTIONS
 
-func (s *storage[V]) Set(key string, value V) {
+func (s *storage[K, V]) Set(key K, value V) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.set(key, value)
 }
 
-func (s *storage[V]) set(key string, value V) {
+func (s *storage[K, V]) set(key K, value V) {
 	if s.settings.expiration == 0 {
 		s.items[key] = item[V]{
 			value:      value,
@@ -111,26 +111,25 @@ func (s *storage[V]) set(key string, value V) {
 	}
 }
 
-func (s *storage[V]) Get(key string) (V, bool) {
+func (s *storage[K, V]) Get(key K) (V, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	return s.get(key)
 }
 
-func (s *storage[V]) get(key string) (V, bool) {
-	var defalultValue V
-
+func (s *storage[K, V]) get(key K) (V, bool) {
 	if item, found := s.items[key]; found {
 		if item.expiration == 0 || item.expiration > time.Now().UnixNano() {
 			return item.value, true
 		}
 	}
 
+	var defalultValue V
 	return defalultValue, false
 }
 
-func (s *storage[V]) Fetch(key string, f func(string) (V, bool)) (V, bool) {
+func (s *storage[K, V]) Fetch(key K, f func(K) (V, bool)) (V, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -147,18 +146,18 @@ func (s *storage[V]) Fetch(key string, f func(string) (V, bool)) (V, bool) {
 	return value, false
 }
 
-func (s *storage[V]) Delete(key string) {
+func (s *storage[K, V]) Delete(key K) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	delete(s.items, key)
 }
 
-func (s *storage[V]) Keys() []string {
+func (s *storage[K, V]) Keys() []K {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	var keys = make([]string, 0, len(s.items))
+	var keys = make([]K, 0, len(s.items))
 	for key := range s.items {
 		keys = append(keys, key)
 	}
