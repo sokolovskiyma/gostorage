@@ -20,6 +20,8 @@ func newStorageShards[K comparable, V any](settings iternalSettings) *storageSha
 		seed: maphash.MakeSeed(),
 	}
 
+	storage.detectHasher()
+
 	for i := 0; i < int(settings.shards); i++ {
 		storage.shards = append(storage.shards, newStorage[K, V](settings))
 	}

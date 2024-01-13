@@ -60,6 +60,32 @@ func TestGetShards(t *testing.T) {
 	}
 }
 
+func TestGetShardsInt(t *testing.T) {
+
+	// preparation
+	stor := NewStorage[int, int](Settings{
+		Expiration: 0,
+		Cleanup:    0,
+		Shards:     5,
+	})
+
+	// test
+	stor.Set(5, 6)
+	if value, ok := stor.Get(5); !ok {
+		t.Log("there is no value 'test'")
+		t.Fail()
+	} else if value != 6 {
+		t.Logf("value %+v != %+v\n", value, 6)
+		t.Fail()
+	}
+
+	// test
+	if value, ok := stor.Get(69); ok || value != 0 {
+		t.Log("found nonexistent value")
+		t.Fail()
+	}
+}
+
 func TestWithFetchShards(t *testing.T) {
 
 	// preparation
